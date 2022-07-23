@@ -4,8 +4,10 @@ but is based on chains of Node-style callbacks instead of threads.
 CLS is very useaful to share contexts across async calls in [Node.js](https://nodejs.org/en/).  
 
 Most CLS modules are implemented based on [async_hooks](https://nodejs.org/docs/latest-v8.x/api/async_hooks.html).  
-async_hook is a very good feature, but it still seems to have performance issues.  
-So we made a simple CLS module using call-stack rather than async_hooks.
+But async_hooks still seems to have performance issues.  
+So we made a simple CLS module using [call-stack](https://en.wikipedia.org/wiki/Call_stack) rather than async_hooks.  
+The main concept is to mark the unique context key on the call-stack by change function name on runtime.  
+and using this key, share the same context across the functions on call-stack.
 
 > Attention:  
 > This module is implemented on call-stack basis. so, context cannot be shared in callback function.  
@@ -32,8 +34,8 @@ import nscls from 'node-stack-cls';
 
 async function handler(event) {
   // set context
-  nscle.setContext('foo', 1);
-  nscle.setContext('bar', 2);
+  nscls.setContext('foo', 1);
+  nscls.setContext('bar', 2);
 
   await process1();
   await process2();
@@ -84,7 +86,7 @@ app.use(async (req, res, next) => {
 ## Expand context to callback function
 To expand context to callback function, wrap your callback function once more.
 ```js
-async function handler(ctx) {
+async function handler(event) {
   nscls.setContext('foo', 1);
 
   asyncProcess().then(nscls.wrapper(result => {
@@ -113,7 +115,17 @@ async function handler(ctx) {
 **wrapper(func)**  
 - *func*: target function to wrap
 - *return*: wrapper function
-- you can invoke wrapper function with wrapped function args
+
+```js
+await nscls.wrapper(async () => {
+  // do something
+})();
+
+// can invoke wrapper with wrapped function args
+await nscls.wrapper(async (arg1, arg2) => {
+  // do something
+})(arg1, arg2);
+```
 
 ## Access context
 **setContext(key, value)**
@@ -125,8 +137,23 @@ async function handler(ctx) {
 - *key*: context key to get
 - *return*: context value (if not found, return undefined)
 
+```js
+nscls.setContext('foo', 1);
+
+nscls.getContext('foo'); // return 1
+nscls.getContext('bar'); // return undefined
+```
+
 ## Change config
 **config(option)**
-- *option*:
+- *option*: option object
   - *wrapperPrefix*: wrapper function name prefix (default: nscls-wrapper)
   - *wrapperWaitTime*: wait msec for wrapper invocation (default: 60000)
+- *return*: none
+```js
+// if you want to change config, please call when the application starts.
+nscls.config({
+  wrapperPrefix: 'myprefix', // default: nscls-wrapper
+  wrapperWaitTime: 120000    // default: 60000
+});
+```
