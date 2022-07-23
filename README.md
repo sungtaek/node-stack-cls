@@ -1,17 +1,17 @@
 # Node.js Continuation Local Storage (CLS) based on call-stack
 Continuation Local Storage(CLS) works like thread-local storage in threaded programming,  
 but is based on chains of Node-style callbacks instead of threads.  
-CLS is very useaful to share contexts across async calls in [Node.js](https://nodejs.org/en/).  
+CLS is very useful to share contexts across async calls in [Node.js](https://nodejs.org/en/).  
 
-Most CLS modules are implemented based on [async_hooks](https://nodejs.org/docs/latest-v8.x/api/async_hooks.html).  
-But async_hooks still seems to have performance issues.  
-So we made a simple CLS module using [call-stack](https://en.wikipedia.org/wiki/Call_stack) rather than async_hooks.  
-The main concept is to mark the unique context key on the call-stack by change function name on runtime.  
+Most CLS modules are implemented based on [async_hooks](https://nodejs.org/dist/latest-v16.x/docs/api/async_hooks.html). It is a good feature for CLS.   
+But it is still experimental feature and seems to have performance issues.  
+So we made a simple CLS module using [call-stack](https://en.wikipedia.org/wiki/Call_stack), not async_hooks.  
+The main concept is to mark the unique context key on the call-stack  
 and using this key, share the same context across the functions on call-stack.
 
 > Attention:  
 > This module is implemented on call-stack basis. so, context cannot be shared in callback function.  
-> Because, callback function is performed with a separate call-stack.  
+> Because, callback function is performed with a separated call-stack.  
 > To expand the context to callback function, you need to wrap the callback function once more.  
 > Therefore, this module is recommended for async/await based processing.
 
@@ -59,6 +59,31 @@ export nscls.wrapper(handler);
 
 ```
 
+## Expand context to callback function
+To expand context to callback function, wrap your callback function once more.
+```js
+async function handler(event) {
+  nscls.setContext('foo', 1);
+
+  asyncProcess().then(nscls.wrapper(result => {
+    nscls.getContext('foo');
+    // do asynchronous process
+  }));
+
+  setTimeout(nscls.wrapper(() => {
+    nscls.getContext('foo');
+    // do asynchronous process
+  }), 10000);
+
+  return 'ok';
+}
+```
+> Note:  
+> The context storage is allocated at the time the wrapper is created (not invoke time)  
+> and released at the time the wrapper is completed.  
+> If the wrapper is not invoked within a certain time, release the context storage.  
+> This is to prevent memory leaks, you can change this value from config. (defualt: 60sec)
+
 ## Apply to middleware
 If use [Koa](https://koajs.com/), you can apply wrapper to middleware.
 ```js
@@ -83,32 +108,6 @@ app.use(async (req, res, next) => {
 });
 ```
 
-## Expand context to callback function
-To expand context to callback function, wrap your callback function once more.
-```js
-async function handler(event) {
-  nscls.setContext('foo', 1);
-
-  asyncProcess().then(nscls.wrapper(result => {
-    nscls.getContext('foo');
-    // do asynchronous process
-  }));
-
-  setTimeout(nscls.wrapper(() => {
-    nscls.getContext('foo');
-    // do asynchronous process
-  }), 10000);
-
-  return 'ok';
-}
-```
-> Note:  
-> The context storage is allocated at the time the wrapper is created (not invoke time)  
-> and released at the time the wrapper is completed.  
-> In order to prevent memory leaks, if the wrapper is not invoked within a certain time,  
-> release the context storage. (default: 60 seconds)  
-> So, the callback function must be performed within this time.  
-> You can change this value from config.
 
 # API
 ## Wrap top function for context sharing
@@ -133,7 +132,7 @@ await nscls.wrapper(async (arg1, arg2) => {
 - *value*: context value to set
 - *return*: none
 
-**getContext(key, value)**
+**getContext(key)**
 - *key*: context key to get
 - *return*: context value (if not found, return undefined)
 
@@ -151,9 +150,9 @@ nscls.getContext('bar'); // return undefined
   - *wrapperWaitTime*: wait msec for wrapper invocation (default: 60000)
 - *return*: none
 ```js
-// if you want to change config, please call when the application starts.
+// if you want to change config, please set before start to handle events.
 nscls.config({
-  wrapperPrefix: 'myprefix', // default: nscls-wrapper
+  wrapperPrefix: 'myprefix', // default: 'nscls-wrapper'
   wrapperWaitTime: 120000    // default: 60000
 });
 ```
