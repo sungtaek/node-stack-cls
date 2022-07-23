@@ -1,4 +1,4 @@
-# Call-stack based Continuation Local Storage
+# Node.js Continuation Local Storage (CLS) based on call stack
 Continuation Local Storage(CLS) works like thread-local storage in threaded programming,  
 but is based on chains of Node-style callbacks instead of threads.  
 CLS is very useaful to share contexts across async calls in [Node.js](https://nodejs.org/en/).  
