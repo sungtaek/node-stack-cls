@@ -55,7 +55,7 @@ async function process2() {
 }
 
 // wrap user handler function
-export nscls.wrapper(handler);
+export default nscls.wrapper(handler);
 
 ```
 
@@ -82,7 +82,7 @@ async function handler(event) {
 > The context storage is allocated at the time the wrapper is created (not invoke time)  
 > and released at the time the wrapper is completed.  
 > If the wrapper is not invoked within a certain time, release the context storage.  
-> This is to prevent memory leaks, you can change this value from config. (defualt: 60sec)
+> This is to prevent memory leaks, you can change this timer with config api. (default: 60sec)
 
 ## Apply to middleware
 If use [Koa](https://koajs.com/), you can apply wrapper to middleware.
