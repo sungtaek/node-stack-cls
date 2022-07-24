@@ -1,6 +1,6 @@
 {
   "name": "node-stack-cls",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Continuation Local Storage based on call stack",
   "main": "index.js",
   "typings": "./index.d.ts",
